@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace cli_life
 {
@@ -25,16 +27,19 @@ namespace cli_life
             IsAlive = IsAliveNext;
         }
     }
+
     public class Board
     {
         public readonly Cell[,] Cells;
         public readonly int CellSize;
+        protected int AliveCells;
 
         public int Columns { get { return Cells.GetLength(0); } }
         public int Rows { get { return Cells.GetLength(1); } }
         public int Width { get { return Columns * CellSize; } }
         public int Height { get { return Rows * CellSize; } }
 
+        [JsonConstructor]
         public Board(int width, int height, int cellSize, double liveDensity = .1)
         {
             CellSize = cellSize;
@@ -48,19 +53,45 @@ namespace cli_life
             Randomize(liveDensity);
         }
 
+        public Board(bool[,] board)
+        {
+            CellSize = 1;
+            AliveCells = 0;
+            Cells = new Cell[board.GetLength(0), board.GetLength(1)];
+            for (int x = 0; x < Columns; x++)
+            {
+                for (int y = 0; y < Rows; y++)
+                {
+                    Cells[x, y] = new Cell() { IsAlive = board[x, y] };
+                    AliveCells += Convert.ToInt32(board[x, y]);
+                }
+            }
+            ConnectNeighbors();
+        }
+
         readonly Random rand = new Random();
         public void Randomize(double liveDensity)
         {
+            AliveCells = 0;
             foreach (var cell in Cells)
+            {
                 cell.IsAlive = rand.NextDouble() < liveDensity;
+                AliveCells += Convert.ToInt32(cell.IsAlive);
+            }
+                
         }
 
         public void Advance()
         {
+            AliveCells = 0;
             foreach (var cell in Cells)
                 cell.DetermineNextLiveState();
             foreach (var cell in Cells)
+            {
                 cell.Advance();
+                AliveCells += Convert.ToInt32(cell.IsAlive);
+            }
+                
         }
         private void ConnectNeighbors()
         {
@@ -85,46 +116,97 @@ namespace cli_life
                 }
             }
         }
-    }
-    class Program
-    {
-        static Board board;
-        static private void Reset()
+
+        public string FiledToString()
         {
-            board = new Board(
-                width: 50,
-                height: 20,
-                cellSize: 1,
-                liveDensity: 0.5);
-        }
-        static void Render()
-        {
-            for (int row = 0; row < board.Rows; row++)
+            string result = "";
+            for (int row = 0; row < Rows; row++)
             {
-                for (int col = 0; col < board.Columns; col++)   
+                for (int col = 0; col < Columns; col++)
                 {
-                    var cell = board.Cells[col, row];
+                    var cell = Cells[col, row];
                     if (cell.IsAlive)
                     {
-                        Console.Write('*');
+                        result += "*";
                     }
                     else
                     {
-                        Console.Write(' ');
+                        result += " ";
                     }
                 }
-                Console.Write('\n');
+                result += "\n";
             }
+            return result;
         }
-        static void Main(string[] args)
+
+        public string Representation()
         {
-            Reset();
-            while(true)
+            string result = FiledToString();
+            result += $"\nShape: ({Rows}, {Columns}) | Alive cells: {AliveCells}   \n";
+            return result;
+        }
+    }
+    partial class Program
+    {
+        enum States
+        {
+            Run,
+            Pause,
+            Menu
+        }
+
+        static string settingsPath;
+        static Board board;
+        static States state = States.Menu;
+
+        static void Render(string[] messages = null, bool clear = false)
+        {
+            if (clear)
             {
                 Console.Clear();
-                Render();
-                board.Advance();
-                Thread.Sleep(1000);
+            }
+            Console.SetCursorPosition(0, 0);
+            Console.Write(board.Representation());
+            if (messages != null)
+            {
+                Console.Write("\n");
+                foreach (var message in messages)
+                {
+                    Console.WriteLine(message);
+                }
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            settingsPath = "settings.json";
+            if (args.Length == 2)
+            {
+                settingsPath = args[1];
+            }
+            Console.CancelKeyPress += new ConsoleCancelEventHandler(pauseHandler);
+            while (true)
+            {
+                switch (state)
+                {
+                    case States.Run:
+                    {
+                        Render(new string[] { "Press CTRL+C to pause" });
+                        board.Advance();
+                        Thread.Sleep(100);
+                        break;
+                    }
+                    case States.Pause:
+                    {
+                        HandlePause();
+                        break;
+                    }
+                    case States.Menu:
+                    {
+                        HandleMainMenu();
+                        break;
+                    }
+                }
             }
         }
     }
