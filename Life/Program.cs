@@ -117,7 +117,7 @@ namespace cli_life
             }
         }
 
-        public string FiledToString()
+        public string FieldToString()
         {
             string result = "";
             for (int row = 0; row < Rows; row++)
@@ -141,7 +141,7 @@ namespace cli_life
 
         public string Representation()
         {
-            string result = FiledToString();
+            string result = FieldToString();
             result += $"\nShape: ({Rows}, {Columns}) | Alive cells: {AliveCells}   \n";
             return result;
         }
@@ -155,7 +155,6 @@ namespace cli_life
             Menu
         }
 
-        static string settingsPath;
         static Board board;
         static States state = States.Menu;
 
@@ -179,11 +178,6 @@ namespace cli_life
 
         static void Main(string[] args)
         {
-            settingsPath = "settings.json";
-            if (args.Length == 2)
-            {
-                settingsPath = args[1];
-            }
             Console.CancelKeyPress += new ConsoleCancelEventHandler(pauseHandler);
             while (true)
             {

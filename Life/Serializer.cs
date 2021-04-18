@@ -19,7 +19,7 @@ namespace cli_life
     {
         public static void Serialize(Board board, string filepath)
         {
-            string content = board.FiledToString();
+            string content = board.FieldToString();
             StreamWriter sw = new StreamWriter(filepath);
             try
             {
@@ -64,7 +64,7 @@ namespace cli_life
                         i++;
                     }
                 }
-                else if (cell == ' ')
+                else if (cell == ' ' || cell == '\r')
                 {
                     board[i].Add(false);
                 }
